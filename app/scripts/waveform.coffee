@@ -13,6 +13,11 @@ window.SM_Waveform = class
         @target = $ @_t
         @width  = @target.width()
 
+        @_cursor = null
+
+        @_inPoint   = null
+        @_outPoint  = null
+
         # -- create our elements -- #
 
         @_zoom = @target.append("<div>")
@@ -136,7 +141,7 @@ window.SM_Waveform = class
                 @_previewIsBrushing = true
             .on "brushend", =>
                 @_previewIsBrushing = false
-                console.log "brush extent is ", @_brush.extent(), @_px.domain()
+                @_drawPreview()
             .on "brush", =>
                 if @_brush.empty()
                     # no brush selected, so focus all segments in our preview
@@ -370,6 +375,9 @@ window.SM_Waveform = class
 
     _drawCursor: ->
         tthis = @
+
+        # -- main waveform -- #
+
         c = @_main.selectAll(".cursor").data([@_cursor])
 
         c.enter().append("g")
@@ -378,6 +386,17 @@ window.SM_Waveform = class
 
         c.select("path")
             .attr("d", (d,i) -> "M#{tthis._x(d)},0v0,#{tthis.height}Z" )
+
+        # -- preview waveform -- #
+
+        pc = @_previewg.selectAll(".cursor").data([@_cursor])
+
+        pc.enter().append("g")
+            .attr("class","cursor")
+            .append("path")
+
+        pc.select("path")
+            .attr("d", (d,i) -> "M#{tthis._px(d)},0v0,#{tthis.preview_height}Z" )
 
     #----------
 

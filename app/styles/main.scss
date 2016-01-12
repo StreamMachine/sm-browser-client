@@ -89,9 +89,15 @@ body {
   shape-rendering: crispEdges;
 }
 
-.segment line {
+.segment {
+  path {
+    stroke: none;
+    fill: #336;
+  }
+  line {
     stroke: black;
     stroke-width: 1px;
+  }
 }
 
 .tick {
