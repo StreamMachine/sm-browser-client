@@ -3,6 +3,9 @@ window.SM_AudioManager = class AudioManager
         _.extend(@, Backbone.Events)
 
         @_playheadTick = null
+        @_loadTick = null
+
+        @_elapsed = 0
 
         @_audio = document.createElement("audio")
         @_source = new MediaSource()
@@ -88,6 +91,9 @@ window.SM_AudioManager = class AudioManager
         clearInterval @_playheadTick if @_playheadTick
         @_playheadTick = null
 
+        clearInterval @_loadTick if @_loadTick
+        @_loadTick = null
+
         @trigger "stop"
 
     #----------
@@ -100,6 +106,14 @@ window.SM_AudioManager = class AudioManager
         @_playheadTick = setInterval =>
             @trigger "playhead", new Date(Number(@cursor) + @_audio.currentTime*1000 - @_initialSeek*1000)
         , 33
+
+        @_loadTick = setInterval =>
+            if @_audio.currentTime - @_elapsed > @_loaded[0].duration
+                # we're done with this segment
+                @_elapsed += @_loaded[0].duration
+                @_loaded.shift()
+                @_loadNext()
+        , 1000
 
     #----------
 
