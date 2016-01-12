@@ -12,7 +12,8 @@ window.SM_AudioManager = class AudioManager
 
         @_source.addEventListener "sourceopen", =>
             # FIXME: type needs to get loaded in
-            @_sourceBuffer = @_source.addSourceBuffer('audio/aac')
+            @_sourceBuffer = @_source.addSourceBuffer('audio/mp4; codecs="mp4a.40.2"')
+            #@_sourceBuffer = @_source.addSourceBuffer('audio/aac')
 
             @_sourceBuffer.addEventListener "updateend", =>
                 @_ready = true
@@ -45,8 +46,9 @@ window.SM_AudioManager = class AudioManager
         return false if !@_sourceBuffer || @_sourceBuffer.updating || @_waiting.length == 0
 
         buffer = @_waiting.shift()
-        @_sourceBuffer.timestampOffset = if @_sourceBuffer.buffered.length > 0 then @_sourceBuffer.buffered.end(0) else 0
-        @_sourceBuffer.appendBuffer(buffer)
+
+        # slice to strip ID3 tag with timestamp
+        @_sourceBuffer.appendBuffer(buffer.slice(73))
 
     #----------
 
@@ -96,7 +98,7 @@ window.SM_AudioManager = class AudioManager
         @_audio.play()
 
         @_playheadTick = setInterval =>
-            @trigger "playhead", new Date(Number(@cursor) + @_audio.currentTime*1000)
+            @trigger "playhead", new Date(Number(@cursor) + @_audio.currentTime*1000 - @_initialSeek*1000)
         , 33
 
     #----------
