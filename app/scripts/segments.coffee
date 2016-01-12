@@ -3,6 +3,24 @@ window.SM_Segments = class SM_Segments
 
     #----------
 
+    class @Selection extends Backbone.Model
+        defaults: ->
+            in: null
+            out: null
+
+        validate: (attrs) ->
+            # require in_point and out_point to be dates
+            if !attrs.in || !_.isDate(attrs.in)
+                return "in is required and must be a date"
+
+            if !attrs.out || !_.isDate(attrs.out)
+                return "out is required and must be a date"
+
+            if attrs.in >= attrs.out
+                return "in is required to be earlier than out"
+
+    #----------
+
     class @Segment extends Backbone.Model
         constructor: (data,opts) ->
             for ts in ['ts','end_ts','ts_actual','end_ts_actual']

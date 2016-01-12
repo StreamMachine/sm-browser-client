@@ -5,7 +5,6 @@ window.SM_Waveform = class
     constructor: (@_t,@_uriBase) ->
         @height = 300
         @preview_height = 50
-        @locator_height = 20
         @initial_duration = moment.duration(10,"m")
 
         @_segWidth = null
@@ -15,8 +14,10 @@ window.SM_Waveform = class
 
         @_cursor = null
 
-        @_inPoint   = null
-        @_outPoint  = null
+        @selection = new SM_Segments.Selection()
+
+        @selection.on "change", =>
+            @_drawInOutPoints()
 
         # -- create our elements -- #
 
@@ -69,6 +70,12 @@ window.SM_Waveform = class
 
                     @_playing.on "playhead", playheadFunc
 
+            else if e.keyCode == 219
+                # left bracket... in point
+                @_setInPoint(@_cursor)
+            else if e.keyCode == 221
+                @_setOutPoint(@_cursor)
+
     #----------
 
     _initFocusSegments: ->
@@ -98,6 +105,16 @@ window.SM_Waveform = class
 
     #----------
 
+    _setInPoint: (ts) ->
+        @selection.set("in",ts)
+
+    #----------
+
+    _setOutPoint: (ts) ->
+        @selection.set("out",ts)
+
+    #----------
+
     _initCharts: ->
         tthis = @
 
@@ -122,8 +139,6 @@ window.SM_Waveform = class
         @_py.domain([-128,128]).rangeRound([-(@preview_height / 2),@preview_height / 2])
 
         @_fullx = d3.time.scale().domain([@segments.first().get("ts"),@segments.last().get("end_ts")]).range([0,@width])
-
-        #@_updatePreviewDomain()
 
         # -- axis labels -- #
 
@@ -156,6 +171,8 @@ window.SM_Waveform = class
                 @_zoom.x(@_x)
                 @_updateFocusWaveform()
                 @_drawCursor() if @_cursor
+                @_drawInOutPoints()
+
 
         pmin = @_pwave.min
         pmax = @_pwave.max
@@ -191,6 +208,8 @@ window.SM_Waveform = class
 
         @_main.on("click", (d,i) -> tthis._click(d,d3.event,this))
 
+        @_mainWave = @_main.append("g").attr("class","wave")
+
 
         @_xAxis_s = @_main.append("g")
             .attr("class","x axis")
@@ -221,8 +240,11 @@ window.SM_Waveform = class
             @focus_segments.reset @segments.selectDates @_x.domain()...
             @_updateFocusWaveform()
             @_drawCursor() if @_cursor
+            @_drawInOutPoints()
 
         @_main.call(@_zoom)
+
+        @_markers = @_main.append("g").attr("class","markers")
 
         true
 
@@ -332,7 +354,7 @@ window.SM_Waveform = class
 
         #console.log "updateFocusWaveform called. Target rate is #{targetRate} for #{@focus_segments.length} segments"
 
-        segs = @_main.selectAll(".segment").data( @focus_segments.models, (s) -> s.id )
+        segs = @_mainWave.selectAll(".segment").data( @focus_segments.models, (s) -> s.id )
 
         segs.enter().append("g")
             .attr("class","segment")
@@ -378,7 +400,7 @@ window.SM_Waveform = class
 
         # -- main waveform -- #
 
-        c = @_main.selectAll(".cursor").data([@_cursor])
+        c = @_markers.selectAll(".cursor").data([@_cursor])
 
         c.enter().append("g")
             .attr("class","cursor")
@@ -396,7 +418,42 @@ window.SM_Waveform = class
             .append("path")
 
         pc.select("path")
-            .attr("d", (d,i) -> "M#{tthis._px(d)},0v0,#{tthis.preview_height}Z" )
+            .attr("d", (d,i) -> "M#{tthis._px(d)},0v0,#{tthis.preview_height}" )
+
+    #----------
+
+    _drawInOutPoints: ->
+        tthis = @
+        for p in ['in','out']
+            s = @_markers.selectAll(".#{p}")
+
+            if ts = @selection.get(p)
+                s = s.data([ts])
+
+                s.enter().append("g")
+                    .attr("class",p)
+                    .append("path")
+
+                s.select("path")
+                    .attr("d", (ts) -> "M#{tthis._x(ts)},0v0,#{tthis.height}")
+
+            else
+                s.remove()
+
+        # -- selection area -- #
+
+        area = @_markers.selectAll(".inout")
+
+        if @selection.isValid()
+            inx = @_x(@selection.get("in"))
+            outx = @_x(@selection.get("out"))
+            area.remove()
+            @_markers.append("path")
+                .attr("class","inout")
+                .attr("d","M#{inx},0L#{outx},0L#{outx},#{@height}L#{inx},#{@height}Z")
+
+        else
+            area.remove()
 
     #----------
 
@@ -404,15 +461,15 @@ window.SM_Waveform = class
         tthis = @
 
         if ts
-            c = @_main.selectAll(".playhead").data([ts])
+            c = @_markers.selectAll(".playhead").data([ts])
 
             c.enter().append("g")
                 .attr("class","playhead")
                 .append("path")
 
             c.select("path")
-                .attr("d", (ts) -> "M#{tthis._x(ts)},0v0,#{tthis.height}Z")
+                .attr("d", (ts) -> "M#{tthis._x(ts)},0v0,#{tthis.height}")
         else
-            @_main.selectAll(".playhead").remove()
+            @_markers.selectAll(".playhead").remove()
 
     #----------

@@ -73,6 +73,16 @@ body {
   }
 }
 
+.in,.out {
+  path {
+    stroke: gray;
+    stroke-width: 2px;
+    stroke-dasharray: 10, 10;
+    stroke-dashoffset: 0;
+    stroke-opacity: 0.5;
+    fill: none;
+  }
+}
 
 .cursor {
     stroke: red;
@@ -128,4 +138,10 @@ body {
 .locator {
   background-color: #eee;
 
+}
+
+.inout {
+  fill: #ffc;
+  fill-opacity: 0.3;
+  stroke: none;
 }
