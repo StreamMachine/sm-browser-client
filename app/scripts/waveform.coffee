@@ -1,117 +1,88 @@
-#= require segments
-#= require audio_manager
+AudioManager = require "./audio_manager"
+React = require "react"
 
-window.SM_Waveform = class
-    constructor: (@_t,@_uriBase) ->
+Segments = require "./segments"
+Cursor = require "./cursor"
+Selection = require "./selection"
+
+Dispatcher = require "./dispatcher"
+
+module.exports = class SM_Waveform
+    constructor: (@target) ->
         @height = 300
         @preview_height = 50
         @initial_duration = moment.duration(10,"m")
 
         @_segWidth = null
 
-        @target = $ @_t
         @width  = @target.width()
 
         @_cursor = null
 
-        @selection = new SM_Segments.Selection()
-
-        @selection.on "change", =>
+        Selection.on "change", =>
             @_drawInOutPoints()
+
+            # if @selection.isValid()
+            #     @_downloadLink.attr("href",@selection.download_link())
+            #     @_download.show()
+            #
+            # else
+            #     @_download.hide()
 
         # -- create our elements -- #
 
-        @_zoom = @target.append("<div>")
-        @_preview = @target.append("<div>")
+        @_preview = $ "<div/>"
+        @_zoom = $ "<div/>"
 
-        # -- set up audio -- #
-
-        @_audioctx = new (window.AudioContext || window.webkitAudioContext)()
+        @target.append @_preview
+        @target.append @_zoom
 
         # -- set up segments collection -- #
 
-        @segments = new SM_Segments.Segments audio:@_audioctx, baseURI:@_uriBase
-        @segments.once "reset", =>
-            @_initFocusSegments()
+        Segments.Segments.once "reset", =>
             @_initCharts()
             @_updateFocusWaveform()
-
-        # this is a segment collection that we'll use just to represent the
-        # extent of segments that should be shown in the focused view
-        @focus_segments = new SM_Segments.Segments
-
-        $.getJSON "#{@_uriBase}/preview", (data) =>
-            @segments.reset(data)
 
         # -- watch for play/pause -- #
 
         @_playing = null
-
-        playheadFunc = (ts) =>
-            @_drawPlayhead(ts)
+        @audio = new AudioManager()
+        @audio.on "playhead", (ts) => @_drawPlayhead(ts)
 
         $(document).on "keyup", (e) =>
             console.log "keycode is ", e.keyCode
             if e.keyCode == 32
                 # spacebar
 
-                if @_playing
+                if @audio.playing()
                     console.log "Stopping"
-                    @_playing.stop()
-                    @_playing.off()
-                    @_playing = null
-
-                    @_drawPlayhead(null)
-
+                    @audio.stop()
                 else
-                    console.log "Playing", @_cursor
-                    @_playing = new SM_AudioManager @_audioctx, @segments, @_cursor
-                    @_playing.play()
-
-                    @_playing.on "playhead", playheadFunc
+                    if ts = Cursor.get('ts')
+                        console.log "Playing", ts
+                        @audio.play ts
 
             else if e.keyCode == 219
                 # left bracket... in point
-                @_setInPoint(@_cursor)
+                @_setInPoint(Cursor.get('ts'))
             else if e.keyCode == 221
-                @_setOutPoint(@_cursor)
-
-    #----------
-
-    _initFocusSegments: ->
-        # using the end date of the segments and the initial_duration, select
-        # the appropriate segments into our focus segments collection
-
-        end_date = @segments.last().get("end_ts")
-        begin_date = moment(end_date).subtract(@initial_duration).toDate()
-
-        @focus_segments.reset @segments.selectDates(begin_date,end_date)
+                @_setOutPoint(Cursor.get('ts'))
 
     #----------
 
     _click: (seg,evt,select,segWidth) ->
         d3m = d3.mouse(@_main.node())
-
-        console.log "evt/d3m is ", evt, d3m
-
-        @_setCursorPosition @_x.invert(d3m[0])
-
-    #----------
-
-    _setCursorPosition: (ts) ->
-        @_cursor = ts
-        console.log "Set cursor to #{ts}"
-        @_drawCursor()
+        Dispatcher.dispatch actionType:"cursor-set", ts:@_x.invert(d3m[0])
 
     #----------
 
     _setInPoint: (ts) ->
-        @selection.set("in",ts)
+        Dispatcher.dispatch actionType:"selection-set-in", ts:ts
 
     #----------
 
     _setOutPoint: (ts) ->
-        @selection.set("out",ts)
+        Dispatcher.dispatch actionType:"selection-set-out", ts:ts
 
     #----------
 
@@ -125,20 +96,20 @@ window.SM_Waveform = class
         @_x = d3.time.scale()
         @_y = d3.scale.linear()
 
-        @_x.domain([@focus_segments.first().get("ts"),@focus_segments.last().get("end_ts")]).rangeRound([0,@width])
+        @_x.domain([Segments.Focus.first().get("ts"),Segments.Focus.last().get("end_ts")]).rangeRound([0,@width])
         @_y.domain([-128,128]).rangeRound([-(@height / 2),@height / 2])
 
         @_px = d3.time.scale()
         @_pxIdx = d3.scale.linear()
         @_py = d3.scale.linear()
 
-        @_pwave = @segments.previewWave()
+        @_pwave = Segments.Segments.previewWave()
 
-        @_px.domain([@segments.first().get("ts"),@segments.last().get("end_ts")]).range([0,@width])
+        @_px.domain([Segments.Segments.first().get("ts"),Segments.Segments.last().get("end_ts")]).range([0,@width])
         @_pxIdx.domain([0,@_pwave.adapter.data.length]).rangeRound([0,@width])
         @_py.domain([-128,128]).rangeRound([-(@preview_height / 2),@preview_height / 2])
 
-        @_fullx = d3.time.scale().domain([@segments.first().get("ts"),@segments.last().get("end_ts")]).range([0,@width])
+        @_fullx = d3.time.scale().domain([Segments.Segments.first().get("ts"),Segments.Segments.last().get("end_ts")]).range([0,@width])
 
         # -- axis labels -- #
 
@@ -148,8 +119,6 @@ window.SM_Waveform = class
         # -- Preview Graph with Brushing -- #
 
         @_previewg = d3.select(@_preview[0]).append("svg").attr("class","preview").style(width:"100%",height:"#{@preview_height+20}px")
-
-        @_pwave = @segments.previewWave() #.resample(@width)
 
         @_brush = d3.svg.brush().x(@_px).extent(@_x.domain())
             .on "brushstart", =>
@@ -161,16 +130,16 @@ window.SM_Waveform = class
                 if @_brush.empty()
                     # no brush selected, so focus all segments in our preview
                     @_x.domain @_px.domain()
-                    @focus_segments.reset @segments.selectDates @_x.domain()...
+                    Segments.Focus.reset Segments.Segments.selectDates @_x.domain()...
                 else
                     @_x.domain @_brush.extent()
-                    @focus_segments.reset @segments.selectDates @_x.domain()...
+                    Segments.Focus.reset Segments.Segments.selectDates @_x.domain()...
 
                 @_drawPreview()
 
                 @_zoom.x(@_x)
                 @_updateFocusWaveform()
-                @_drawCursor() if @_cursor
+                @_drawCursor()
                 @_drawInOutPoints()
 
 
@@ -237,14 +206,17 @@ window.SM_Waveform = class
             @_brush.extent @_x.domain()
 
             @_previewg.selectAll(".brush").call(@_brush)
-            @focus_segments.reset @segments.selectDates @_x.domain()...
+            Segments.Focus.reset Segments.Segments.selectDates @_x.domain()...
             @_updateFocusWaveform()
-            @_drawCursor() if @_cursor
+            @_drawCursor()
             @_drawInOutPoints()
 
         @_main.call(@_zoom)
 
         @_markers = @_main.append("g").attr("class","markers")
+
+        Cursor.on "change", =>
+            @_drawCursor()
 
         true
 
@@ -302,7 +274,7 @@ window.SM_Waveform = class
             # is the resolution too high?
             msecs = Number(rd) - Number(ld)
 
-            pdata = @segments.previewWave().adapter.data
+            pdata = Segments.Segments.previewWave().adapter.data
 
             mintime = pdata.samples_per_pixel / pdata.sample_rate * @width
 
@@ -354,7 +326,7 @@ window.SM_Waveform = class
 
         #console.log "updateFocusWaveform called. Target rate is #{targetRate} for #{@focus_segments.length} segments"
 
-        segs = @_mainWave.selectAll(".segment").data( @focus_segments.models, (s) -> s.id )
+        segs = @_mainWave.selectAll(".segment").data( Segments.Focus.models, (s) -> s.id )
 
         segs.enter().append("g")
             .attr("class","segment")
@@ -396,11 +368,18 @@ window.SM_Waveform = class
     #----------
 
     _drawCursor: ->
+        ts = Cursor.get('ts')
+
+        if !ts
+            @_markers.selectAll(".cursor").remove()
+            @_previewg.selectAll(".cursor").remove()
+            return true
+
         tthis = @
 
         # -- main waveform -- #
 
-        c = @_markers.selectAll(".cursor").data([@_cursor])
+        c = @_markers.selectAll(".cursor").data([ts])
 
         c.enter().append("g")
             .attr("class","cursor")
@@ -411,7 +390,7 @@ window.SM_Waveform = class
 
         # -- preview waveform -- #
 
-        pc = @_previewg.selectAll(".cursor").data([@_cursor])
+        pc = @_previewg.selectAll(".cursor").data([ts])
 
         pc.enter().append("g")
             .attr("class","cursor")
@@ -427,7 +406,7 @@ window.SM_Waveform = class
         for p in ['in','out']
             s = @_markers.selectAll(".#{p}")
 
-            if ts = @selection.get(p)
+            if ts = Selection.get(p)
                 s = s.data([ts])
 
                 s.enter().append("g")
@@ -444,9 +423,9 @@ window.SM_Waveform = class
 
         area = @_markers.selectAll(".inout")
 
-        if @selection.isValid()
-            inx = @_x(@selection.get("in"))
-            outx = @_x(@selection.get("out"))
+        if Selection.isValid()
+            inx = @_x(Selection.get("in"))
+            outx = @_x(Selection.get("out"))
             area.remove()
             @_markers.append("path")
                 .attr("class","inout")

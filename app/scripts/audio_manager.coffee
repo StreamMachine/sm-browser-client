@@ -1,5 +1,9 @@
-window.SM_AudioManager = class AudioManager
-    constructor: (@ctx,@segments,@cursor) ->
+Segments = require "./segments"
+Cursor = require "./cursor"
+Dispatcher = require "./dispatcher"
+
+SegmentPlayer = class
+    constructor: (@ts) ->
         _.extend(@, Backbone.Events)
 
         @_playheadTick = null
@@ -15,8 +19,8 @@ window.SM_AudioManager = class AudioManager
 
         @_source.addEventListener "sourceopen", =>
             # FIXME: type needs to get loaded in
-            @_sourceBuffer = @_source.addSourceBuffer('audio/mp4; codecs="mp4a.40.2"')
-            #@_sourceBuffer = @_source.addSourceBuffer('audio/aac')
+            #@_sourceBuffer = @_source.addSourceBuffer('audio/mp4; codecs="mp4a.40.2"')
+            @_sourceBuffer = @_source.addSourceBuffer('audio/aac')
 
             @_sourceBuffer.addEventListener "updateend", =>
                 @_ready = true
@@ -29,11 +33,11 @@ window.SM_AudioManager = class AudioManager
         # and two after it
         @_loaded = []
 
-        seg = @segments.findByTimestamp(@cursor)
+        seg = Segments.Segments.findByTimestamp(@ts)
         @_load(seg)
 
-        console.log "AudioManager: cursor / ts_actual", @cursor, seg.get("ts_actual")
-        @_initialSeek = (Number(@cursor) - Number(seg.get("ts_actual"))) / 1000
+        console.log "AudioManager: cursor / ts_actual", @ts, seg.get("ts_actual")
+        @_initialSeek = (Number(@ts) - Number(seg.get("ts_actual"))) / 1000
         console.log "Initial seek inside the segment should be #{@_initialSeek}"
 
         @_playing = null
@@ -104,7 +108,7 @@ window.SM_AudioManager = class AudioManager
         @_audio.play()
 
         @_playheadTick = setInterval =>
-            @trigger "playhead", new Date(Number(@cursor) + @_audio.currentTime*1000 - @_initialSeek*1000)
+            @trigger "playhead", new Date(Number(@ts) + @_audio.currentTime*1000 - @_initialSeek*1000)
         , 33
 
         @_loadTick = setInterval =>
@@ -138,4 +142,38 @@ window.SM_AudioManager = class AudioManager
     _loadNext: (seg)->
         return if @_loaded.length >= 3
         lastSeg = if @_loaded.length > 0 then @_loaded[@_loaded.length-1].seg else seg
-        @_load @segments.segmentAfter(lastSeg)
+        @_load Segments.Segments.segmentAfter(lastSeg)
+
+#----------
+
+module.exports = class AudioManager
+    constructor: ->
+        _.extend(@, Backbone.Events)
+
+        @_player = null
+
+        @dispatchToken = Dispatcher.register (payload) =>
+            switch payload.actionType
+                when 'audio-play'
+                    @play payload.ts
+                when 'audio-stop'
+                    @stop()
+
+        @_playheadFunc = (ts) =>
+            @trigger "playhead", ts
+
+    playing: ->
+        @_player?
+
+    play: (ts) ->
+        @stop() if @_player
+
+        @_player = new SegmentPlayer ts
+        @_player.play()
+        @_player.on "playhead", @_playheadFunc
+
+    stop: ->
+        @_player?.stop()
+        @_player?.off()
+        @_player = null
+        @trigger "playhead", null
