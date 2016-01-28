@@ -6,10 +6,13 @@ SelectionModel = class extends Backbone.Model
         @dispatchToken = Dispatcher.register (payload) =>
             switch payload.actionType
                 when "selection-set-in"
-                    console.log "Setting selection in to #{ payload.ts }"
-                    @set "in", payload.ts
+                    if !@attributes.out || payload.ts < @attributes.out
+                        @set "in", payload.ts
                 when "selection-set-out"
-                    @set "out", payload.ts
+                    if !@attributes.in || payload.ts > @attributes.in
+                        @set "out", payload.ts
+                when "selection-clear"
+                    @set in:null, out:null
 
     defaults: ->
         in: null
@@ -30,6 +33,17 @@ SelectionModel = class extends Backbone.Model
 
         if attrs.in >= attrs.out
             return "in is required to be earlier than out"
+
+    validCursorFor: (point,ts) ->
+        if @attributes[point] == ts
+            return false
+        else if point == "in" && @attributes.out && ts >= @attributes.out
+            return false
+        else if point == "out" && @attributes.in && ts <= @attributes.in
+            return false
+        else
+            console.log "true", @attributes.in, @attributes.out
+            return true
 
 Selection = new SelectionModel
 

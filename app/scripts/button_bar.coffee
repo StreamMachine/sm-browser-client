@@ -38,8 +38,12 @@ SetPointButton = React.createClass
         Cursor.on "change", =>
             @forceUpdate()
 
+        Selection.on "change", =>
+            @forceUpdate()
+
     componentWillUnmount: ->
         Cursor.off null, null, @
+        Selection.off null, null, @
 
     render: ->
         classes = "btn btn-default"
@@ -47,10 +51,30 @@ SetPointButton = React.createClass
         onClick = =>
             Dispatcher.dispatch actionType:"selection-set-#{@props.point}", ts:Cursor.get('ts')
 
-        if !Cursor.get('ts')
+        if !Cursor.get('ts') || !Selection.validCursorFor(@props.point,Cursor.get('ts'))
             classes += " disabled"
 
         <button className={classes} onClick={onClick}>Set {@props.point}</button>
+
+#----------
+
+ClearSelectionButton = React.createClass
+    componentWillMount: ->
+        Selection.on "change", =>
+            @forceUpdate()
+
+    componentWillUnmount: ->
+        Selection.off null, null, @
+
+    render: ->
+        onClick = => Dispatcher.dispatch actionType:"selection-clear"
+
+        classes = "btn btn-default"
+
+        if !Selection.get("in") && !Selection.get("out")
+            classes += " disabled"
+
+        <button className={classes} onClick={onClick}>Clear Selection</button>
 
 #----------
 
@@ -64,4 +88,5 @@ module.exports = React.createClass
             <DownloadButton/>
             <SetPointButton point="in"/>
             <SetPointButton point="out"/>
+            <ClearSelectionButton/>
         </div>
