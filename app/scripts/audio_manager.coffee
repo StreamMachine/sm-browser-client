@@ -1,4 +1,5 @@
 Backbone = require "backbone"
+bowser = require "bowser"
 
 Segments = require "./segments"
 Cursor = require "./cursor"
@@ -20,9 +21,12 @@ SegmentPlayer = class
         @_waiting = []
 
         @_source.addEventListener "sourceopen", =>
-            # FIXME: type needs to get loaded in
-            #@_sourceBuffer = @_source.addSourceBuffer('audio/mp4; codecs="mp4a.40.2"')
-            @_sourceBuffer = @_source.addSourceBuffer('audio/aac')
+            # FIXME: type needs to get loaded in to support mp3
+
+            if bowser.safari
+                @_sourceBuffer = @_source.addSourceBuffer('audio/mp4; codecs="mp4a.40.2"')
+            else
+                @_sourceBuffer = @_source.addSourceBuffer('audio/aac')
 
             @_sourceBuffer.addEventListener "updateend", =>
                 @_ready = true
