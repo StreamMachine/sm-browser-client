@@ -18,12 +18,12 @@ InvalidDownloadButton = React.createClass
 
 DownloadButton = React.createClass
     componentWillMount: ->
-        Selection.on "change", =>
-            console.log "force button update after selection change"
-            @forceUpdate()
+        @_cb = => @forceUpdate()
+        Selection.on "change", @_cb
 
     componentWillUnmount: ->
-        Selection.off null, null, @
+        Selection.off null, @_cb
+        @_cb = null
 
     render: ->
         if Selection.isValid()
@@ -35,15 +35,15 @@ DownloadButton = React.createClass
 
 SetPointButton = React.createClass
     componentWillMount: ->
-        Cursor.on "change", =>
-            @forceUpdate()
+        @_cb = => @forceUpdate()
 
-        Selection.on "change", =>
-            @forceUpdate()
+        Cursor.on "change", @_cb
+        Selection.on "change", @_cb
 
     componentWillUnmount: ->
-        Cursor.off null, null, @
-        Selection.off null, null, @
+        Cursor.off null, @_cb
+        Selection.off null, @_cb
+        @_cb = null
 
     render: ->
         classes = "btn btn-default"
@@ -60,11 +60,12 @@ SetPointButton = React.createClass
 
 ClearSelectionButton = React.createClass
     componentWillMount: ->
-        Selection.on "change", =>
-            @forceUpdate()
+        @_cb = => @forceUpdate()
+        Selection.on "change", @_cb
 
     componentWillUnmount: ->
-        Selection.off null, null, @
+        Selection.off null, @_cb
+        @_cb = null
 
     render: ->
         onClick = => Dispatcher.dispatch actionType:"selection-clear"
