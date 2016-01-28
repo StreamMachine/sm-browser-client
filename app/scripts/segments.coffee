@@ -1,5 +1,6 @@
 Backbone = require("backbone")
 Dispatcher = require("./dispatcher")
+WaveformData = require "waveform-data"
 
 Segment = class extends Backbone.Model
     constructor: (data,opts) ->

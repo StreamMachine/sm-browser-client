@@ -1,6 +1,8 @@
 React = require "react"
 ReactDom = require "react-dom"
 
+moment = require "moment"
+
 ButtonBar   = require "./button_bar"
 #Waveforms   = require "./waveforms"
 Info        = require "./info"
@@ -31,10 +33,22 @@ SMBrowser = React.createFactory(SMBrowserComponent)
 #----------
 
 module.exports = class SM_Browser
-    constructor: (@target,@uri_base,@initial_duration=moment.duration(10,"m")) ->
-        console.log "setting segment uri base to #{@uri_base}"
-        Segments.Segments.uriBase = @uri_base
-        Selection.set "uriBase", @uri_base
+    DefaultOptions:
+        target: "#wave"
+        uri_base: null
+        initial_duration: moment.duration(10,"m")
+        wave_height: 300
+        preview_height: 50
+
+    constructor: (opts) ->
+        @opts = _.defaults opts, @DefaultOptions
+
+        if !@opts.uri_base
+            throw "URI Base is a required argument."
+
+        console.log "setting segment uri base to #{@opts.uri_base}"
+        Segments.Segments.uriBase = @opts.uri_base
+        Selection.set "uriBase", @opts.uri_base
 
         @_segments = Segments.Segments
         @_focus_segments = Segments.Focus
@@ -44,17 +58,17 @@ module.exports = class SM_Browser
         Cursor.on "change", =>
             console.log "Cursor is now ", Cursor.get('ts')
 
-        $.getJSON "#{@uri_base}/preview", (data) =>
-            console.log "Got wave segments"
+        $.getJSON "#{@opts.uri_base}/preview", (data) =>
+            console.log "Wave segments loaded."
             Segments.Segments.reset(data)
 
         Segments.Segments.on "reset", =>
             # set initial focus segments
             end_date = Segments.Segments.last().get("end_ts")
-            begin_date = moment(end_date).subtract(@initial_duration).toDate()
+            begin_date = moment(end_date).subtract(@opts.initial_duration).toDate()
             Segments.Focus.reset Segments.Segments.selectDates(begin_date,end_date)
 
-        @$t = $(@target)
+        @$t = $(@opts.target)
 
         @$wave = $ "<div/>"
         @$ui = $ "<div/>"
@@ -68,4 +82,4 @@ module.exports = class SM_Browser
 
         # -- Render Waveforms -- #
 
-        @wave = new SM_Waveform @$wave
+        @wave = new SM_Waveform @$wave, @opts

@@ -1,5 +1,6 @@
 AudioManager = require "./audio_manager"
 React = require "react"
+d3 = require "d3"
 
 Segments = require "./segments"
 Cursor = require "./cursor"
@@ -8,10 +9,9 @@ Selection = require "./selection"
 Dispatcher = require "./dispatcher"
 
 module.exports = class SM_Waveform
-    constructor: (@target) ->
-        @height = 300
-        @preview_height = 50
-        @initial_duration = moment.duration(10,"m")
+    constructor: (@target,@opts) ->
+        @height = @opts.wave_height
+        @preview_height = @opts.preview_height
 
         @_segWidth = null
 

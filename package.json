@@ -8,6 +8,7 @@
     "backbone": "^1.2.3",
     "browser-sync": "^2.2.1",
     "coffee-reactify": "^4.0.0",
+    "d3": "^3.5.14",
     "del": "^1.1.1",
     "flux": "^2.1.1",
     "gulp": "^3.9.0",
@@ -36,6 +37,7 @@
     "react": "^0.14.6",
     "react-dom": "^0.14.6",
     "underscore": "^1.8.3",
+    "waveform-data": "^1.5.1",
     "wiredep": "^2.2.2"
   },
   "eslintConfig": {

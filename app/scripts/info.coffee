@@ -4,6 +4,7 @@ require "moment-duration-format"
 
 Segments = require "./segments"
 Selection = require "./selection"
+Cursor = require "./cursor"
 
 AudioInfo = React.createClass
         componentWillMount: ->
@@ -49,13 +50,30 @@ SelectionInfo = React.createClass
         else
             "--"
 
-        console.log "duration is ", duration
-
         <div>
             <h4>Selection</h4>
             <span className="lead">In:</span> {ints}
             <br/><span className="lead">Out:</span> {outts}
             <br/><span className="lead">Duration:</span> {duration}
+        </div>
+
+#----------
+
+CursorInfo = React.createClass
+    componentWillMount: ->
+        @_cb = => @forceUpdate()
+        Cursor.on "change", @_cb
+
+    componentWillUnmount: ->
+        Cursor.off null, @_cb
+        @_cb = null
+
+    render: ->
+        cursorts = if Cursor.has("ts") then moment(Cursor.get('ts')).format("MMM DD, h:mm:ssa") else "--"
+
+        <div>
+            <h4>Cursor</h4>
+            {cursorts}
         </div>
 
 #----------
@@ -71,6 +89,7 @@ module.exports = React.createClass
         <div className="info row">
             <div className="col-md-6">
                 <AudioInfo/>
+                <CursorInfo/>
             </div>
             <div className="col-md-6">
                 <SelectionInfo/>

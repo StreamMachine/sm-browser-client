@@ -1,3 +1,5 @@
+Backbone = require "backbone"
+
 Segments = require "./segments"
 Cursor = require "./cursor"
 Dispatcher = require "./dispatcher"
