@@ -42,11 +42,11 @@ SelectionInfo = React.createClass
         @_cb = null
 
     render: ->
-        ints = if Selection.has("in") then moment(Selection.get('in')).format("MMM DD, h:mm:ssa") else "--"
-        outts = if Selection.has("out") then moment(Selection.get('out')).format("MMM DD, h:mm:ssa") else "--"
+        ints = if Selection.has("in") then moment(Selection.get('in')).format("MMM DD, h:mm:ss.SSSa") else "--"
+        outts = if Selection.has("out") then moment(Selection.get('out')).format("MMM DD, h:mm:ss.SSSa") else "--"
 
         duration = if Selection.isValid()
-            moment.duration(moment(Selection.get('out')).diff(Selection.get('in'))).format("h [hrs], m [min], s [sec]")
+            moment.duration(moment(Selection.get('out')).diff(Selection.get('in'))).format("h [hrs], m [min], s [sec], S [ms]")
         else
             "--"
 
@@ -69,7 +69,7 @@ CursorInfo = React.createClass
         @_cb = null
 
     render: ->
-        cursorts = if Cursor.has("ts") then moment(Cursor.get('ts')).format("MMM DD, h:mm:ssa") else "--"
+        cursorts = if Cursor.has("ts") then moment(Cursor.get('ts')).format("MMM DD, h:mm:ss.SSSa") else "--"
 
         <div>
             <h4>Cursor</h4>
