@@ -16,12 +16,6 @@ SM_Waveform = require "./waveform"
 AudioManager = require "./audio_manager"
 
 SMBrowserComponent = React.createClass
-    getDefaultProps: ->
-        wave_height: 300
-        preview_height: 50
-
-    componentWillMount: ->
-
     render: ->
         <div className="sm-browser">
             <ButtonBar/>
@@ -32,7 +26,7 @@ SMBrowser = React.createFactory(SMBrowserComponent)
 
 #----------
 
-module.exports = class SM_Browser
+class Main
     DefaultOptions:
         target: "#wave"
         uri_base: null
@@ -83,3 +77,5 @@ module.exports = class SM_Browser
         # -- Render Waveforms -- #
 
         @wave = new SM_Waveform @$wave, @opts
+
+module.exports = Main

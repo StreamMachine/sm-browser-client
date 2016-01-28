@@ -8,27 +8,25 @@ import {stream as wiredep} from 'wiredep';
 const $ = gulpLoadPlugins();
 const reload = browserSync.reload;
 
-const browserify = require('gulp-browserify');
+const source = require('vinyl-source-stream');
+const buffer = require('vinyl-buffer');
+const browserify = require('browserify');
 const concat = require('gulp-concat');
+const coffeeReactify = require('coffee-reactify');
 
 gulp.task('scripts', () => {
-  return gulp.src('./app/scripts/index.coffee', { read: false })
-     .pipe(browserify({ transform: ['coffee-reactify'], extensions: ['.coffee'] }))
-     .pipe(concat('index.js'))
-     .pipe(gulp.dest('.tmp/scripts'));
+  var b = browserify({
+    entries: "./app/scripts/sm-browser.coffee",
+    transform: [coffeeReactify],
+    extensions: ['.coffee'],
+    standalone: "SM_Browser"
+  });
+
+  return b.bundle()
+    .pipe(source('sm-browser.js'))
+    .pipe(buffer())
+    .pipe(gulp.dest('.tmp/scripts'));
 });
-
-// gulp.task('scripts', () => {
-//   return gulp.src('app/scripts/**/*.coffee')
-//     .pipe($.coffee())
-//     .pipe(gulp.dest('.tmp/scripts'));
-// });
-
-// gulp.task('templates', () => {
-//   return gulp.src('app/scripts/**/*.hamlc')
-//     .pipe(hamlc({js:true}))
-//     .pipe(gulp.dest('.tmp/scripts'))
-// });
 
 gulp.task('styles', () => {
   return gulp.src('app/styles/*.scss')

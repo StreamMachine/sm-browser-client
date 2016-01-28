@@ -73,7 +73,10 @@
     <!-- endbuild -->
 
     <!-- build:js scripts/main.js -->
-    <script src="scripts/index.js"></script>
+    <script src="scripts/sm-browser.js"></script>
+    <script>
+      window.smbrowser = new SM_Browser({target:"#wave", uri_base:"http://127.0.0.1:8005/kpcc"})
+    </script>
     <!-- endbuild -->
   </body>
 </html>
