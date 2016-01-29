@@ -7,27 +7,13 @@ Selection = require "./selection"
 Cursor = require "./cursor"
 
 AudioInfo = React.createClass
-        componentWillMount: ->
-            @_cb = => @forceUpdate()
-            Segments.Segments.on 'add remove reset', @_cb
-
-        componentWillUnmount: ->
-            Segments.Segments.off null, @_cb
-            @_cb = null
-
         render: ->
-            times =
-                if Segments.Segments.length > 0
-                    [
-                        moment(Segments.Segments.first().get("ts_actual")).format('MMM DD, h:mm:ssa'),
-                        moment(Segments.Segments.last().get("end_ts_actual")).format('MMM DD, h:mm:ssa'),
-                    ]
-                else
-                    ["--","--"]
+            sTs = if @props.start then moment(@props.start).format('MMM DD, h:mm:ssa') else '--'
+            eTs = if @props.end then moment(@props.end).format('MMM DD, h:mm:ssa') else '--'
 
             <div>
                 <h4>Available Audio:</h4>
-                {times[0]} to {times[1]}
+                {sTs} to {eTs}
             </div>
 
 #----------
@@ -66,7 +52,7 @@ module.exports = React.createClass
     render: ->
         <div className="info row">
             <div className="col-md-6">
-                <AudioInfo/>
+                <AudioInfo start={@props.audioStart} end={@props.audioEnd}/>
                 <CursorInfo ts={@props.cursor}/>
             </div>
             <div className="col-md-6">
