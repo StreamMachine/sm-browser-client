@@ -45,6 +45,8 @@ class Main
         @$t.append @$wave
         @$t.append @$ui
 
+        @audio = new AudioManager()
+
         # -- Manage Data -- #
 
         Cursor.on "change", =>
@@ -54,6 +56,10 @@ class Main
         Selection.on "change", => @_render()
 
         Segments.Segments.on 'add remove reset', => @_render()
+
+        # Pull our stream audio info
+        $.getJSON "#{@opts.uri_base}/info", (info) =>
+            @audio.setInfo info
 
         $.getJSON "#{@opts.uri_base}/preview", (data) =>
             console.log "Wave segments loaded."
@@ -68,7 +74,7 @@ class Main
 
         # -- Render Waveforms -- #
 
-        @wave = new SM_Waveform @$wave, @opts
+        @wave = new SM_Waveform @$wave, @audio, @opts
 
     _render: ->
         sIn = Selection.get('in')

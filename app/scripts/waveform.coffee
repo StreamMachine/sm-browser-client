@@ -9,7 +9,7 @@ Selection = require "./selection"
 Dispatcher = require "./dispatcher"
 
 module.exports = class SM_Waveform
-    constructor: (@target,@opts) ->
+    constructor: (@target,@audio,@opts) ->
         @height = @opts.wave_height
         @preview_height = @opts.preview_height
 
@@ -46,7 +46,6 @@ module.exports = class SM_Waveform
         # -- watch for play/pause -- #
 
         @_playing = null
-        @audio = new AudioManager()
         @audio.on "playhead", (ts) => @_drawPlayhead(ts)
 
         $(document).on "keyup", (e) =>

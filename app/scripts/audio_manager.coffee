@@ -6,7 +6,7 @@ Cursor = require "./cursor"
 Dispatcher = require "./dispatcher"
 
 SegmentPlayer = class
-    constructor: (@ts) ->
+    constructor: (@format,@codec,@ts) ->
         _.extend(@, Backbone.Events)
 
         @_playheadTick = null
@@ -23,10 +23,15 @@ SegmentPlayer = class
         @_source.addEventListener "sourceopen", =>
             # FIXME: type needs to get loaded in to support mp3
 
-            if bowser.safari
-                @_sourceBuffer = @_source.addSourceBuffer('audio/mp4; codecs="mp4a.40.2"')
-            else
-                @_sourceBuffer = @_source.addSourceBuffer('audio/aac')
+            switch @format
+                when "mp3"
+                    @_sourceBuffer = @_source.addSourceBuffer('audio/mp3')
+
+                when "aac"
+                    if bowser.safari
+                        @_sourceBuffer = @_source.addSourceBuffer('audio/mp4; codecs="'+@codec+'"')
+                    else
+                        @_sourceBuffer = @_source.addSourceBuffer('audio/aac')
 
             @_sourceBuffer.addEventListener "updateend", =>
                 @_ready = true
@@ -156,6 +161,9 @@ module.exports = class AudioManager
     constructor: ->
         _.extend(@, Backbone.Events)
 
+        @_format = null
+        @_codec = null
+
         @_player = null
 
         @dispatchToken = Dispatcher.register (payload) =>
@@ -168,13 +176,21 @@ module.exports = class AudioManager
         @_playheadFunc = (ts) =>
             @trigger "playhead", ts
 
+    setInfo: (obj) ->
+        @_format = obj.format
+        @_codec = obj.codec
+
     playing: ->
         @_player?
 
     play: (ts) ->
         @stop() if @_player
 
-        @_player = new SegmentPlayer ts
+        if !@_format
+            console.log "Attempted to play before audio info arrived."
+            return
+
+        @_player = new SegmentPlayer @_format, @_codec, ts
         @_player.play()
         @_player.on "playhead", @_playheadFunc
 
