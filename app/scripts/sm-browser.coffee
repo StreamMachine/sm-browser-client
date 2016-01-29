@@ -16,10 +16,34 @@ SM_Waveform = require "./waveform"
 AudioManager = require "./audio_manager"
 
 SMBrowserComponent = React.createClass
+    componentWillMount: ->
+        @_scb = =>
+            @setState
+                selectionIn:    Selection.get('in')
+                selectionOut:   Selection.get('out')
+                selectionValid: Selection.isValid()
+
+        Selection.on "change", @_scb
+
+        @_ccb = =>
+            @setState cursor:Cursor.get('ts')
+
+        Cursor.on "change", @_ccb
+
+    componentWillUnmount: ->
+        Selection.off null, @_scb
+        Cursor.off null, @_ccb
+
+    getInitialState: ->
+        selectionIn:    Selection.get('in')
+        selectionOut:   Selection.get('out')
+        selectionValid: Selection.isValid()
+        cursor:         Cursor.get('ts')
+
     render: ->
         <div className="sm-browser">
-            <ButtonBar/>
-            <Info/>
+            <ButtonBar selectionValid={@state.selectionValid} selectionIn={@state.selectionIn} selectionOut={@state.selectionOut} cursor={@state.cursor}/>
+            <Info selectionIn={@state.selectionIn} selectionOut={@state.selectionOut} cursor={@state.cursor}/>
         </div>
 
 SMBrowser = React.createFactory(SMBrowserComponent)

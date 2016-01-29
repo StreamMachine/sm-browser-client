@@ -42,7 +42,6 @@ SelectionModel = class extends Backbone.Model
         else if point == "out" && @attributes.in && ts <= @attributes.in
             return false
         else
-            console.log "true", @attributes.in, @attributes.out
             return true
 
 Selection = new SelectionModel

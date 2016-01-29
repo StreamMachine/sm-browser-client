@@ -33,20 +33,12 @@ AudioInfo = React.createClass
 #----------
 
 SelectionInfo = React.createClass
-    componentWillMount: ->
-        @_cb = => @forceUpdate()
-        Selection.on "change", @_cb
-
-    componentWillUnmount: ->
-        Selection.off null, @_cb
-        @_cb = null
-
     render: ->
-        ints = if Selection.has("in") then moment(Selection.get('in')).format("MMM DD, h:mm:ss.SSSa") else "--"
-        outts = if Selection.has("out") then moment(Selection.get('out')).format("MMM DD, h:mm:ss.SSSa") else "--"
+        ints = if @props.in then moment(@props.in).format("MMM DD, h:mm:ss.SSSa") else "--"
+        outts = if @props.out then moment(@props.out).format("MMM DD, h:mm:ss.SSSa") else "--"
 
-        duration = if Selection.isValid()
-            moment.duration(moment(Selection.get('out')).diff(Selection.get('in'))).format("h [hrs], m [min], s [sec], S [ms]")
+        duration = if @props.in && @props.out
+            moment.duration(moment(@props.out).diff(@props.in)).format("h [hrs], m [min], s [sec], S [ms]")
         else
             "--"
 
@@ -60,16 +52,8 @@ SelectionInfo = React.createClass
 #----------
 
 CursorInfo = React.createClass
-    componentWillMount: ->
-        @_cb = => @forceUpdate()
-        Cursor.on "change", @_cb
-
-    componentWillUnmount: ->
-        Cursor.off null, @_cb
-        @_cb = null
-
     render: ->
-        cursorts = if Cursor.has("ts") then moment(Cursor.get('ts')).format("MMM DD, h:mm:ss.SSSa") else "--"
+        cursorts = if @props.ts then moment(@props.ts).format("MMM DD, h:mm:ss.SSSa") else "--"
 
         <div>
             <h4>Cursor</h4>
@@ -79,19 +63,13 @@ CursorInfo = React.createClass
 #----------
 
 module.exports = React.createClass
-    # componentWillMount: ->
-    #     Segments.Segments.on 'add remove reset', (=> @forceUpdate()), @
-    #
-    # componentWillUnmount: ->
-    #     Segments.Segments.off null, null, @
-
     render: ->
         <div className="info row">
             <div className="col-md-6">
                 <AudioInfo/>
-                <CursorInfo/>
+                <CursorInfo ts={@props.cursor}/>
             </div>
             <div className="col-md-6">
-                <SelectionInfo/>
+                <SelectionInfo in={@props.selectionIn} out={@props.selectionOut}/>
             </div>
         </div>
