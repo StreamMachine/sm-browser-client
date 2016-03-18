@@ -22,6 +22,7 @@ class Main
         initial_duration: moment.duration(10,"m")
         wave_height: 300
         preview_height: 50
+        poll_interval: 10000
 
     constructor: (opts) ->
         @opts = _.defaults opts, @DefaultOptions
@@ -37,6 +38,9 @@ class Main
         @_focus_segments = Segments.Focus
         @_cursor = Cursor
         @_dispatcher = Dispatcher
+
+        @_shouldPoll = true
+        @_segPollTimeout = null
 
         @$t = $(@opts.target)
 
@@ -61,12 +65,14 @@ class Main
         $.getJSON "#{@opts.uri_base}/info", (info) =>
             @audio.setInfo info
 
-        $.getJSON "#{@opts.uri_base}/preview", (data) =>
-            console.log "Wave segments loaded."
-            Segments.Segments.reset(data)
+        @_pollForSegments()
 
-        Segments.Segments.on "reset", =>
-            # set initial focus segments
+        Segments.Segments.on "add remove", =>
+            console.log "Segments added/removed"
+
+        # set initial focus segments the first time we get segments
+        Segments.Segments.once "reset", =>
+            console.log "Segments got reset"
             end_date = Segments.Segments.last().get("end_ts")
             begin_date = moment(end_date).subtract(@opts.initial_duration).toDate()
             Segments.Focus.reset Segments.Segments.selectDates(begin_date,end_date)
@@ -75,6 +81,26 @@ class Main
         # -- Render Waveforms -- #
 
         @wave = new SM_Waveform @$wave, @audio, @opts
+
+    #----------
+
+    stop: ->
+        @_shouldPoll = false
+        clearTimeout @_segPollTimeout if @_segPollTimeout
+        @_segPollTimeout = null
+
+    #----------
+
+    _pollForSegments: ->
+        $.getJSON "#{@opts.uri_base}/preview", (data) =>
+            Segments.Segments.loadPreview(data)
+
+            if @_shouldPoll
+                @_segPollTimeout = setTimeout =>
+                    @_pollForSegments()
+                , @opts.poll_interval
+
+    #----------
 
     _render: ->
         sIn = Selection.get('in')

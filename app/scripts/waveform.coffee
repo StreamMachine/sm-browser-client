@@ -13,6 +13,8 @@ module.exports = class SM_Waveform
         @height = @opts.wave_height
         @preview_height = @opts.preview_height
 
+        @_zooming = false
+
         @_segWidth = null
 
         @width  = @target.width()
@@ -43,13 +45,19 @@ module.exports = class SM_Waveform
             @_initCharts()
             @_updateFocusWaveform()
 
+        Segments.Segments.on "add remove", =>
+            @_setFullX()
+            @_cachePreviewWave()
+            @_updateFocusWaveform()
+            @_drawPreview()
+
         # -- watch for play/pause -- #
 
         @_playing = null
         @audio.on "playhead", (ts) => @_drawPlayhead(ts)
 
         $(document).on "keyup", (e) =>
-            console.log "keycode is ", e.keyCode
+            #console.log "keycode is ", e.keyCode
             if e.keyCode == 32
                 # spacebar
 
@@ -85,6 +93,12 @@ module.exports = class SM_Waveform
 
     #----------
 
+    _setFullX: ->
+        @_fullx = d3.time.scale().domain([Segments.Segments.first().get("ts"),Segments.Segments.last().get("end_ts")]).range([0,@width])
+
+
+    #----------
+
     _initCharts: ->
         tthis = @
 
@@ -102,13 +116,13 @@ module.exports = class SM_Waveform
         @_pxIdx = d3.scale.linear()
         @_py = d3.scale.linear()
 
-        @_pwave = Segments.Segments.previewWave()
+        @_cachePreviewWave()
 
         @_px.domain([Segments.Segments.first().get("ts"),Segments.Segments.last().get("end_ts")]).range([0,@width])
-        @_pxIdx.domain([0,@_pwave.adapter.data.length]).rangeRound([0,@width])
+        @_pxIdx.domain([0,@_pwave.adapter.data.length-1]).rangeRound([0,@width])
         @_py.domain([-128,128]).rangeRound([-(@preview_height / 2),@preview_height / 2])
 
-        @_fullx = d3.time.scale().domain([Segments.Segments.first().get("ts"),Segments.Segments.last().get("end_ts")]).range([0,@width])
+        @_setFullX()
 
         # -- axis labels -- #
 
@@ -141,16 +155,13 @@ module.exports = class SM_Waveform
                 @_drawCursor()
                 @_drawInOutPoints()
 
-
-        pmin = @_pwave.min
-        pmax = @_pwave.max
         @_previewArea = d3.svg.area()
             .x( (d) -> tthis._pxIdx(d) )
-            .y0( (d) -> tthis._py(pmin[d]) )
-            .y1( (d) -> tthis._py(pmax[d]) )
+            .y0( (d) -> tthis._py(tthis._pwaveMin[d]) )
+            .y1( (d) -> tthis._py(tthis._pwaveMax[d]) )
 
         @_previewPath = @_previewg.append("path")
-            .attr("transform","translate(0,#{@preview_height/2})")
+            .attr("transform","translate(0,#{@preview_height / 2})")
 
         @_previewg.append("g")
             .attr("class","x brush")
@@ -174,7 +185,10 @@ module.exports = class SM_Waveform
 
         @_main = d3.select(@_zoom[0]).append("svg").style(width:"100%",height:"#{@height+20}px")
 
-        @_main.on("click", (d,i) -> tthis._click(d,d3.event,this))
+        @_main.on("click", (d,i) ->
+            console.log "click", tthis._zooming
+            return if tthis._zooming
+            tthis._click(d,d3.event,this))
 
         @_mainWave = @_main.append("g").attr("class","wave")
 
@@ -186,29 +200,35 @@ module.exports = class SM_Waveform
 
         @_zoom = d3.behavior.zoom().scaleExtent([1,1])
         @_zoom.x(@_x)
-        @_zoom.on "zoom", =>
-            # -- validate target -- #
+        @_zoom.on "zoomstart", =>
+                # this will get set true in zoom if we actually are moving.
+                # clearing here gets us set for click
+                @_zooming = false
+            .on "zoom", =>
+                @_zooming = true
 
-            t = @_zoom.translate()
-            tx = t[0]
+                # -- validate target -- #
 
-            if @_x(@_fullx.domain()[0]) > 0
-                tx -= @_x(@_fullx.domain()[0])
-            else if @_x(@_fullx.domain()[1]) < @_x.range()[1]
-                tx -= @_x(@_fullx.domain()[1]) - @_x.range()[1]
+                t = @_zoom.translate()
+                tx = t[0]
 
-            @_zoom.translate([tx,t[1]])
+                if @_x(@_fullx.domain()[0]) > 0
+                    tx -= @_x(@_fullx.domain()[0])
+                else if @_x(@_fullx.domain()[1]) < @_x.range()[1]
+                    tx -= @_x(@_fullx.domain()[1]) - @_x.range()[1]
 
-            # -- trigger updates -- #
+                @_zoom.translate([tx,t[1]])
 
-            @_drawPreview()
-            @_brush.extent @_x.domain()
+                # -- trigger updates -- #
 
-            @_previewg.selectAll(".brush").call(@_brush)
-            Segments.Focus.reset Segments.Segments.selectDates @_x.domain()...
-            @_updateFocusWaveform()
-            @_drawCursor()
-            @_drawInOutPoints()
+                @_drawPreview()
+                @_brush.extent @_x.domain()
+
+                @_previewg.selectAll(".brush").call(@_brush)
+                Segments.Focus.reset Segments.Segments.selectDates @_x.domain()...
+                @_updateFocusWaveform()
+                @_drawCursor()
+                @_drawInOutPoints()
 
         @_main.call(@_zoom)
 
@@ -218,6 +238,13 @@ module.exports = class SM_Waveform
             @_drawCursor()
 
         true
+
+    #----------
+
+    _cachePreviewWave: ->
+        @_pwave = Segments.Segments.previewWave()
+        @_pwaveMin = @_pwave.min
+        @_pwaveMax = @_pwave.max
 
     #----------
 
@@ -303,11 +330,13 @@ module.exports = class SM_Waveform
 
         # now convert these values into pixels in the preview waveform
 
+        #console.log "sec_start = Math.floor((#{Number(ld)} - #{Number(fulld[0])}) / 1000)"
+        #console.log "sec_end = Math.ceil((#{Number(rd)} - #{Number(fulld[0])}) / 1000)"
         sec_start = Math.floor((Number(ld) - Number(fulld[0])) / 1000)
         sec_end = Math.ceil((Number(rd) - Number(fulld[0])) / 1000)
 
-        offset_start = @_pwave.at_time(sec_start)
-        offset_end = @_pwave.at_time(sec_end)
+        offset_start = Math.max(@_pwave.at_time(sec_start),@_pwave.offset_start)
+        offset_end = Math.min(@_pwave.at_time(sec_end),@_pwave.offset_end-1)
 
         @_px.domain([ld,rd])
         @_pxIdx.domain([offset_start,offset_end])

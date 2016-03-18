@@ -71,6 +71,15 @@ Segment = class extends Backbone.Model
 SegmentsCollection = class extends Backbone.Collection
     model: Segment
 
+    loadPreview: (data) ->
+        if @length == 0
+            @reset(data)
+        else
+            @set(data, merge:false)
+
+        # invalidate our cached preview graph
+        @_preview = null
+
     comparator: (seg) -> Number(seg.get('ts'))
 
     findByTimestamp: (ts) ->
@@ -85,21 +94,16 @@ SegmentsCollection = class extends Backbone.Collection
             null
 
     selectDates: (begin_date,end_date) ->
-        #console.log "selectDates called for ", begin_date, end_date
         @filter (s) ->
-            #console.log "testing #{s.id}", s.attributes.ts, s.attributes.end_ts, begin_date, end_date
             (s.attributes.ts > begin_date && s.attributes.ts < end_date) || (s.attributes.end_ts < end_date && s.attributes.end_ts > begin_date)
 
     previewWave: ->
-        # create a waveformdata by concatanating the previews from each
-        # segment
+        # create a waveformdata by concatanating the previews from each segment
 
         return @_preview if @_preview
 
         data = []
         data.push seg.attributes.preview.data... for seg in @models
-
-        #console.log "pW seg data is ", data
 
         p = WaveformData.create
             version: 1
