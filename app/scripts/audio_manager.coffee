@@ -25,7 +25,10 @@ SegmentPlayer = class
 
             switch @format
                 when "mp3"
-                    @_sourceBuffer = @_source.addSourceBuffer('audio/mp3')
+                    if bowser.safari
+                        @_sourceBuffer = @_source.addSourceBuffer('audio/mp3')
+                    else
+                        @_sourceBuffer = @_source.addSourceBuffer('audio/mpeg')
 
                 when "aac"
                     if bowser.safari
